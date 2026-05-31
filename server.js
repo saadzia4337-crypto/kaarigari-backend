@@ -8,7 +8,7 @@ require("dotenv").config();
 const app = express();
 
 // Middleware — CORS allows any origin (needed for browsers only; React Native is not subject to CORS)
-app.use(
+app.use( 
   cors({
     origin: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
