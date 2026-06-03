@@ -1,4 +1,6 @@
 const OpenAI = require('openai');
+const fs = require('fs');
+const path = require('path');
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -200,64 +202,168 @@ Respond to the user's message and/or image with expert fashion and tailoring adv
 }
 
 /**
+ * Sanitize user prompt for DALL-E
+ */
+function sanitizeImagePrompt(prompt) {
+  return String(prompt || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, 400);
+}
+
+/**
+ * Build a concise DALL-E prompt (long instruction blocks often trigger 400 errors)
+ */
+function buildDallePrompt(userPrompt) {
+  return (
+    `Professional fashion product photo for a tailoring catalog: ${userPrompt}. ` +
+    'Garment on mannequin or flat lay, neutral studio background, soft lighting, ' +
+    'fabric texture visible, no text, no watermark, no logo.'
+  ).slice(0, 3900);
+}
+
+function mapOpenAIImageError(error) {
+  const apiMsg = error?.error?.message || error?.message || '';
+  const code = error?.error?.code || error?.code || '';
+
+  if (error.status === 401) {
+    return new Error('Image generation service is not available. Please check your API key.');
+  }
+  if (error.status === 429) {
+    return new Error('Too many image generation requests. Please try again in a moment.');
+  }
+  if (error.status === 403) {
+    return new Error('Image generation is not allowed with your current plan.');
+  }
+  if (
+    code === 'content_policy_violation' ||
+    /content policy|safety system|not allowed/i.test(apiMsg)
+  ) {
+    return new Error(
+      'This description was blocked. Describe the outfit only, e.g. "maroon shalwar kameez on mannequin, cotton fabric, studio photo". Avoid real people names or sensitive content.'
+    );
+  }
+  if (/prompt.*(too long|length|maximum)/i.test(apiMsg) || code === 'string_above_max_length') {
+    return new Error('Description is too long. Please use a shorter prompt (under 400 characters).');
+  }
+  if (error.status === 400) {
+    return new Error(
+      apiMsg ||
+        'Could not generate this image. Describe the clothing clearly (color, style, fabric) and avoid real person names.'
+    );
+  }
+  return new Error('Failed to generate image. Please try again.');
+}
+
+async function callDalle(prompt) {
+  const model = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
+  const params = {
+    model,
+    prompt,
+    n: 1,
+    size: '1024x1024',
+  };
+
+  if (model === 'dall-e-3') {
+    params.quality = 'standard';
+  } else if (model === 'gpt-image-1') {
+    params.quality = process.env.OPENAI_IMAGE_QUALITY || 'medium';
+  }
+
+  const response = await openai.images.generate(params);
+  const item = response.data[0];
+
+  if (item?.url) {
+    return {
+      imageUrl: item.url,
+      revisedPrompt: item.revised_prompt || prompt,
+    };
+  }
+
+  if (item?.b64_json) {
+    const dir = path.join(__dirname, '../uploads/ai-generated');
+    fs.mkdirSync(dir, { recursive: true });
+    const filename = `ai-${Date.now()}.png`;
+    fs.writeFileSync(path.join(dir, filename), Buffer.from(item.b64_json, 'base64'));
+    return {
+      imageUrl: `/uploads/ai-generated/${filename}`,
+      revisedPrompt: prompt,
+    };
+  }
+
+  throw new Error('OpenAI returned no image data.');
+}
+
+/**
+ * Use GPT to rewrite a safe, DALL-E-friendly fashion prompt
+ */
+async function refineImagePromptForDalle(userPrompt) {
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-3.5-turbo',
+    messages: [
+      {
+        role: 'system',
+        content:
+          'Rewrite the user request as ONE DALL-E 3 image prompt for custom clothing/tailoring. ' +
+          'Show only the garment (mannequin or flat lay), neutral background, professional catalog photo. ' +
+          'No real people, no celebrity names, no violence. English. Max 800 characters. Output only the prompt.',
+      },
+      { role: 'user', content: userPrompt },
+    ],
+    max_tokens: 250,
+    temperature: 0.6,
+  });
+
+  const refined = completion.choices[0]?.message?.content?.trim();
+  if (!refined) {
+    throw new Error('Could not refine the image description. Please try simpler wording.');
+  }
+  return buildDallePrompt(refined.slice(0, 800));
+}
+
+/**
  * Generate fashion image using DALL-E
  * @param {string} prompt - Image generation prompt
  * @param {Object} userContext - User information for context
  * @returns {Promise<Object>} Generated image URL and metadata
  */
 async function generateFashionImage(prompt, userContext) {
+  const cleaned = sanitizeImagePrompt(prompt);
+  if (cleaned.length < 3) {
+    throw new Error('Please enter a longer description (at least 3 characters).');
+  }
+
+  const dallePrompt = buildDallePrompt(cleaned);
+
   try {
-    // Create fashion-focused prompt
-    const fashionPrompt = `Create a professional fashion design image for Kaarigari clothing platform. 
-
-User context: ${userContext.name} (${userContext.role})
-
-Request: ${prompt}
-
-Style requirements:
-- Professional fashion photography style
-- Clear, high-quality clothing visualization
-- Appropriate for custom tailoring business
-- Show fabric texture and details
-- Clean background with focus on garment
-- Realistic proportions and styling
-
-Generate a high-quality fashion image that would be suitable for a custom clothing platform.`;
-
-    const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: fashionPrompt,
-      n: 1,
-      size: "1024x1024",
-      quality: "standard",
-      style: "vivid", // or "natural" for more realistic
-    });
-
-    const imageUrl = response.data[0].url;
-    const revisedPrompt = response.data[0].revised_prompt;
-
+    const result = await callDalle(dallePrompt);
     return {
-      imageUrl: imageUrl,
-      revisedPrompt: revisedPrompt,
-      originalPrompt: prompt,
-      timestamp: new Date().toISOString()
+      imageUrl: result.imageUrl,
+      revisedPrompt: result.revisedPrompt,
+      originalPrompt: cleaned,
+      timestamp: new Date().toISOString(),
     };
-
   } catch (error) {
-    console.error('DALL-E API error:', error);
-    
-    // Fallback responses for common errors
-    if (error.status === 401) {
-      throw new Error('Image generation service is not available. Please check your API key.');
-    } else if (error.status === 429) {
-      throw new Error('Too many image generation requests. Please try again in a moment.');
-    } else if (error.status === 400) {
-      throw new Error('Invalid image request. Please try a different description.');
-    } else if (error.status === 403) {
-      throw new Error('Image generation is not allowed with your current plan.');
+    console.error('DALL-E API error:', error?.error || error);
+
+    if (error.status === 400) {
+      try {
+        console.log('DALL-E 400 — retrying with refined prompt for:', cleaned);
+        const refinedPrompt = await refineImagePromptForDalle(cleaned);
+        const result = await callDalle(refinedPrompt);
+        return {
+          imageUrl: result.imageUrl,
+          revisedPrompt: result.revisedPrompt,
+          originalPrompt: cleaned,
+          timestamp: new Date().toISOString(),
+        };
+      } catch (retryError) {
+        console.error('DALL-E retry failed:', retryError?.error || retryError);
+        throw mapOpenAIImageError(retryError);
+      }
     }
-    
-    throw new Error('Failed to generate image. Please try again.');
+
+    throw mapOpenAIImageError(error);
   }
 }
 

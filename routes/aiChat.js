@@ -148,9 +148,14 @@ router.post('/generate-image', authMiddleware, async (req, res) => {
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ message: 'Prompt is required' });
     }
-    
-    if (prompt.length > 1000) {
-      return res.status(400).json({ message: 'Prompt is too long. Maximum 1000 characters.' });
+
+    const trimmed = prompt.trim();
+    if (!trimmed) {
+      return res.status(400).json({ message: 'Prompt is required' });
+    }
+
+    if (trimmed.length > 400) {
+      return res.status(400).json({ message: 'Prompt is too long. Maximum 400 characters.' });
     }
     
     // Check if OpenAI is configured
@@ -169,14 +174,18 @@ router.post('/generate-image', authMiddleware, async (req, res) => {
     };
     
     // Generate image using DALL-E
-    const imageResult = await generateFashionImage(prompt, userContext);
-    
+    const imageResult = await generateFashionImage(trimmed, userContext);
+
+    const imageUrl = imageResult.imageUrl.startsWith('http')
+      ? imageResult.imageUrl
+      : `${req.protocol}://${req.get('host')}${imageResult.imageUrl}`;
+
     // Log the interaction for analytics
-    console.log(`AI Image Generation - User: ${userContext.name}, Prompt: "${prompt}"`);
-    
+    console.log(`AI Image Generation - User: ${userContext.name}, Prompt: "${trimmed}"`);
+
     res.json({
       success: true,
-      imageUrl: imageResult.imageUrl,
+      imageUrl,
       revisedPrompt: imageResult.revisedPrompt,
       originalPrompt: imageResult.originalPrompt,
       timestamp: imageResult.timestamp
