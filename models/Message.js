@@ -31,6 +31,12 @@ const messageSchema = new mongoose.Schema(
       enum: ['text', 'image', 'product'],
       default: 'text'
     },
+    caption: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: '',
+    },
     // For product sharing
     productId: {
       type: mongoose.Schema.Types.ObjectId,

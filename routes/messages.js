@@ -1,17 +1,63 @@
 const express = require("express");
 const router = express.Router();
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 const Message = require("../models/Message");
 const User = require("../models/User");
 const authMiddleware = require("../middleware/authMiddleware");
 
-// Send a message
-router.post("/send", authMiddleware, async (req, res) => {
+const messagesUploadDir = path.join("uploads", "messages");
+if (!fs.existsSync(messagesUploadDir)) {
+  fs.mkdirSync(messagesUploadDir, { recursive: true });
+}
+
+const messageImageStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, messagesUploadDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || ".jpg";
+    cb(null, `msg-${Date.now()}${ext}`);
+  },
+});
+
+const uploadMessageImage = multer({
+  storage: messageImageStorage,
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"), false);
+    }
+  },
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+// Send a message (JSON text or multipart with image)
+router.post("/send", authMiddleware, uploadMessageImage.single("image"), async (req, res) => {
   try {
-    const { receiverId, content, messageType = 'text', productId } = req.body;
-    const senderId = req.user.id;
+    const receiverId = req.body.receiverId;
+    const productId = req.body.productId || null;
+    const captionText = req.body.content ? String(req.body.content).trim() : "";
+    const senderId = req.user._id;
+
+    let content = captionText;
+    let messageType = req.body.messageType === "image" || req.file ? "image" : "text";
+    let caption = "";
+
+    if (req.file) {
+      messageType = "image";
+      content = req.file.path.replace(/\\/g, "/");
+      caption = captionText;
+    } else if (messageType === "text") {
+      content = content.trim();
+    }
 
     if (!receiverId || !content) {
-      return res.status(400).json({ message: "Receiver and content are required" });
+      return res.status(400).json({ message: "Receiver and message content (or image) are required" });
+    }
+
+    if (messageType === "text" && content.length > 1000) {
+      return res.status(400).json({ message: "Message is too long (max 1000 characters)" });
     }
 
     // Verify receiver exists
@@ -23,9 +69,10 @@ router.post("/send", authMiddleware, async (req, res) => {
     const message = new Message({
       sender: senderId,
       receiver: receiverId,
-      content: content.trim(),
+      content,
       messageType,
-      productId: productId || null
+      caption,
+      productId: productId || null,
     });
 
     await message.save();
@@ -45,6 +92,12 @@ router.post("/send", authMiddleware, async (req, res) => {
     res.status(201).json(message);
   } catch (error) {
     console.error("Send message error:", error);
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({ message: "Image must be smaller than 5MB" });
+    }
+    if (error.message === "Only image files are allowed") {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: error.message });
   }
 });

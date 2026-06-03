@@ -19,7 +19,9 @@ const cartItemSchema = new mongoose.Schema(
       waist: { type: String, required: false },
       length: { type: String, required: false },
       shoulders: { type: String, required: false },
-      sleeves: { type: String, required: false }
+      sleeves: { type: String, required: false },
+      fabric: { type: String, required: false },
+      color: { type: String, required: false },
     },
   },
   { _id: true }

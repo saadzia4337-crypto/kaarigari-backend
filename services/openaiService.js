@@ -11,7 +11,31 @@ const openai = new OpenAI({
  * @param {Object} userContext - User information for context
  * @returns {Promise<string>} AI response
  */
-async function getOpenAIResponse(userMessage, userContext) {
+function marketplacePromptBlock(marketplaceContext) {
+  if (!marketplaceContext || !String(marketplaceContext).trim()) return '';
+  return `
+
+Live marketplace data from Kaarigari (always prefer this over guessing prices or seller names):
+${marketplaceContext}
+
+When the user asks for the cheapest tailor, seller, or lowest price for a category:
+1. Use ONLY the marketplace data above.
+2. State the seller/shop name and price in PKR clearly.
+3. Mention the product title if provided.
+4. Do not invent tailors or prices not listed above.
+
+When the user asks for the best-rated / top-rated tailor or seller for a category:
+1. Use ONLY the marketplace rating data above.
+2. State the tailor/shop name and rating (out of 5) and review count.
+3. Do not invent ratings or tailors not listed above.
+
+When the user asks for tailors near an address, street, or city:
+1. Use ONLY the tailor directory / nearby tailor data above.
+2. Name specific tailor(s) with shop name and full address (street + city).
+3. Cover ALL cities listed on the platform — never answer as if only Lahore exists unless the user asked for Lahore.`;
+}
+
+async function getOpenAIResponse(userMessage, userContext, marketplaceContext = '') {
   try {
     // Create system prompt based on user context
     const systemPrompt = `You are an expert AI fashion and tailoring consultant for Kaarigari, a premium custom clothing platform. 
@@ -28,6 +52,8 @@ User context:
 - Name: ${userContext.name}
 - Role: ${userContext.role} (buyer/seller/admin)
 - Email: ${userContext.email}
+- City: ${userContext.city || '(not set)'}
+- Street address: ${userContext.streetAddress || '(not set)'}
 
 Guidelines:
 1. Focus ONLY on tailoring, clothing, fashion, design, and style topics
@@ -44,7 +70,7 @@ Platform features:
 - Direct messaging with professional tailors
 - Custom clothing orders with design specifications
 
-Respond to the user's message with expert fashion and tailoring advice:`;
+Respond to the user's message with expert fashion and tailoring advice:${marketplacePromptBlock(marketplaceContext)}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo", // Faster model for text responses
@@ -88,7 +114,7 @@ Respond to the user's message with expert fashion and tailoring advice:`;
  * @param {Object} userContext - User information for context
  * @returns {Promise<string>} AI response
  */
-async function getOpenAIResponseWithVision(content, userContext) {
+async function getOpenAIResponseWithVision(content, userContext, marketplaceContext = '') {
   try {
     // Create system prompt based on user context
     const systemPrompt = `You are an expert AI fashion and tailoring consultant for Kaarigari, a premium custom clothing platform. 
@@ -106,6 +132,8 @@ User context:
 - Name: ${userContext.name}
 - Role: ${userContext.role} (buyer/seller/admin)
 - Email: ${userContext.email}
+- City: ${userContext.city || '(not set)'}
+- Street address: ${userContext.streetAddress || '(not set)'}
 
 Guidelines:
 1. Focus ONLY on tailoring, clothing, fashion, design, and style topics
@@ -131,7 +159,7 @@ When analyzing images, focus on:
 - Occasion appropriateness
 - Customization suggestions
 
-Respond to the user's message and/or image with expert fashion and tailoring advice:`;
+Respond to the user's message and/or image with expert fashion and tailoring advice:${marketplacePromptBlock(marketplaceContext)}`;
 
     const messages = [
       {

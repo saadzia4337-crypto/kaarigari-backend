@@ -75,6 +75,23 @@ const onlineUsers = new Map();
 mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
     console.log("MongoDB Connected");
+
+    try {
+      const usersCol = mongoose.connection.db.collection("users");
+      const legacy = await usersCol.find({ streetNumber: { $exists: true } }).toArray();
+      for (const u of legacy) {
+        const addr = (u.streetAddress && String(u.streetAddress).trim()) || u.streetNumber || "";
+        await usersCol.updateOne(
+          { _id: u._id },
+          { $set: { streetAddress: addr }, $unset: { streetNumber: "" } }
+        );
+      }
+      if (legacy.length > 0) {
+        console.log(`Migrated streetNumber → streetAddress for ${legacy.length} user(s)`);
+      }
+    } catch (migrateErr) {
+      console.error("streetAddress migration skipped:", migrateErr.message);
+    }
     
     // Log all users with passwords and emails
     try {

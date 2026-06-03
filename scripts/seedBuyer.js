@@ -13,7 +13,7 @@ const BUYER = {
   email: "buyer@gmail.com",
   password: "buyer12",
   role: "buyer",
-  streetNumber: "456",
+  streetAddress: "456",
   city: "Test City",
 };
 
@@ -30,7 +30,7 @@ async function seedBuyer() {
     existing.lastName = BUYER.lastName;
     existing.password = hashedPassword;
     existing.role = BUYER.role;
-    existing.streetNumber = BUYER.streetNumber;
+    existing.streetAddress = BUYER.streetAddress;
     existing.city = BUYER.city;
     await existing.save();
     console.log("Buyer user updated:", BUYER.email);
@@ -41,7 +41,7 @@ async function seedBuyer() {
       email: BUYER.email,
       password: hashedPassword,
       role: BUYER.role,
-      streetNumber: BUYER.streetNumber,
+      streetAddress: BUYER.streetAddress,
       city: BUYER.city,
     });
     console.log("Buyer user created:", BUYER.email);

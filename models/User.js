@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema(
     },
     shopName: { type: String, default: "" },
     bio: { type: String, default: "" },
-    streetNumber: { type: String, default: "" },
+    streetAddress: { type: String, default: "" },
     city: { type: String, default: "" },
     bestSeller: { type: Boolean, default: false },
   },

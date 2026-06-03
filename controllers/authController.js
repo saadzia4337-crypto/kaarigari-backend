@@ -8,6 +8,18 @@ const generateToken = (id) => {
   });
 };
 
+/** Accept streetAddress or legacy streetNumber from clients / old DB docs */
+function pickStreetAddress(body) {
+  if (!body) return "";
+  const raw = body.streetAddress ?? body.streetNumber;
+  return raw != null ? String(raw).trim() : "";
+}
+
+function resolveUserStreetAddress(user) {
+  if (!user) return "";
+  return String(user.streetAddress || user.streetNumber || "").trim();
+}
+
 // SIGNUP
 exports.signup = async (req, res) => {
   console.log("[auth] signup — request received, body keys:", req.body ? Object.keys(req.body) : "none");
@@ -24,10 +36,10 @@ exports.signup = async (req, res) => {
       password,
       confirmPassword,
       role,
-      streetNumber,
       city,
       bestSeller,
     } = req.body;
+    const streetAddress = pickStreetAddress(req.body);
 
     // Validate password match
     if (password !== confirmPassword) {
@@ -54,7 +66,7 @@ exports.signup = async (req, res) => {
       password: hashedPassword,
       profilePic,
       role,
-      streetNumber: streetNumber || "",
+      streetAddress,
       city: city || "",
       bestSeller: role === "seller" && bestSeller === true,
     });
@@ -68,7 +80,7 @@ exports.signup = async (req, res) => {
       profilePic: user.profilePic,
       shopName: user.shopName || "",
       bio: user.bio || "",
-      streetNumber: user.streetNumber || "",
+      streetAddress: resolveUserStreetAddress(user),
       city: user.city || "",
       bestSeller: user.bestSeller || false,
       token: generateToken(user._id),
@@ -113,7 +125,7 @@ exports.login = async (req, res) => {
       profilePic: user.profilePic,
       shopName: user.shopName || "",
       bio: user.bio || "",
-      streetNumber: user.streetNumber || "",
+      streetAddress: resolveUserStreetAddress(user),
       city: user.city || "",
       bestSeller: user.bestSeller || false,
       token: generateToken(user._id),
@@ -135,19 +147,21 @@ const toUserResponse = (user) => ({
   profilePic: user.profilePic,
   shopName: user.shopName || "",
   bio: user.bio || "",
-  streetNumber: user.streetNumber || "",
+  streetAddress: resolveUserStreetAddress(user),
   city: user.city || "",
 });
 
 // UPDATE PROFILE (protected)
 exports.updateProfile = async (req, res) => {
   try {
-    const { firstName, lastName, shopName, bio, streetNumber, city } = req.body;
+    const { firstName, lastName, shopName, bio, city } = req.body;
     const updates = {};
     if (firstName !== undefined) updates.firstName = firstName;
     if (lastName !== undefined) updates.lastName = lastName;
     if (req.file) updates.profilePic = req.file.path;
-    if (streetNumber !== undefined) updates.streetNumber = streetNumber;
+    if (req.body.streetAddress !== undefined || req.body.streetNumber !== undefined) {
+      updates.streetAddress = pickStreetAddress(req.body);
+    }
     if (city !== undefined) updates.city = city;
     if (req.user.role === "seller") {
       if (shopName !== undefined) updates.shopName = shopName;

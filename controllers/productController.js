@@ -53,7 +53,10 @@ exports.createProduct = async (req, res) => {
       sizes,
     });
 
-    const populated = await Product.findById(product._id).populate("seller", "firstName lastName shopName profilePic city");
+    const populated = await Product.findById(product._id).populate(
+      "seller",
+      "firstName lastName shopName profilePic city streetAddress"
+    );
     res.status(201).json(populated);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -81,7 +84,7 @@ exports.listProducts = async (req, res) => {
     }
     
     products = await Product.find(filter)
-      .populate("seller", "firstName lastName shopName profilePic city bestSeller")
+      .populate("seller", "firstName lastName shopName profilePic city streetAddress bestSeller")
       .sort({ createdAt: -1 })
       .limit(req.query.limit ? parseInt(req.query.limit) : 100);
     res.json(products);
@@ -219,7 +222,7 @@ exports.getProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate(
       "seller",
-      "firstName lastName shopName profilePic email"
+      "firstName lastName shopName profilePic email city streetAddress"
     );
     if (!product) {
       return res.status(404).json({ message: "Product not found" });

@@ -16,7 +16,7 @@ const SELLERS = [
     role: "seller",
     shopName: "Fashion Hub",
     bio: "Professional tailor with expertise in modern designs",
-    streetNumber: "111",
+    streetAddress: "111",
     city: "Karachi",
   },
   {
@@ -27,7 +27,7 @@ const SELLERS = [
     role: "seller",
     shopName: "Style Studio",
     bio: "Expert in traditional and contemporary clothing",
-    streetNumber: "112",
+    streetAddress: "112",
     city: "Lahore",
   },
   {
@@ -38,7 +38,7 @@ const SELLERS = [
     role: "seller",
     shopName: "Tailor Craft",
     bio: "Specializing in custom fitted garments",
-    streetNumber: "113",
+    streetAddress: "113",
     city: "Islamabad",
   },
   {
@@ -49,7 +49,7 @@ const SELLERS = [
     role: "seller",
     shopName: "Design House",
     bio: "Creative designs for all occasions",
-    streetNumber: "114",
+    streetAddress: "114",
     city: "Faisalabad",
   },
   {
@@ -60,7 +60,7 @@ const SELLERS = [
     role: "seller",
     shopName: "Elegant Wear",
     bio: "Luxury tailoring services",
-    streetNumber: "115",
+    streetAddress: "115",
     city: "Rawalpindi",
   },
   {
@@ -71,7 +71,7 @@ const SELLERS = [
     role: "seller",
     shopName: "Custom Fit",
     bio: "Perfect fit guaranteed",
-    streetNumber: "116",
+    streetAddress: "116",
     city: "Multan",
   },
   {
@@ -82,7 +82,7 @@ const SELLERS = [
     role: "seller",
     shopName: "Modern Tailor",
     bio: "Contemporary fashion specialist",
-    streetNumber: "117",
+    streetAddress: "117",
     city: "Peshawar",
   },
   {
@@ -93,7 +93,7 @@ const SELLERS = [
     role: "seller",
     shopName: "Classic Style",
     bio: "Timeless designs and quality",
-    streetNumber: "118",
+    streetAddress: "118",
     city: "Quetta",
   },
   {
@@ -104,7 +104,7 @@ const SELLERS = [
     role: "seller",
     shopName: "Premium Tailor",
     bio: "High-end custom clothing",
-    streetNumber: "119",
+    streetAddress: "119",
     city: "Sialkot",
   },
   {
@@ -115,7 +115,7 @@ const SELLERS = [
     role: "seller",
     shopName: "Artisan Studio",
     bio: "Handcrafted with attention to detail",
-    streetNumber: "120",
+    streetAddress: "120",
     city: "Gujranwala",
   },
 ];
@@ -141,7 +141,7 @@ async function seedMultipleSellers() {
         existing.role = seller.role;
         existing.shopName = seller.shopName;
         existing.bio = seller.bio;
-        existing.streetNumber = seller.streetNumber;
+        existing.streetAddress = seller.streetAddress;
         existing.city = seller.city;
         await existing.save();
         console.log("Seller user updated:", seller.email);
@@ -154,7 +154,7 @@ async function seedMultipleSellers() {
           role: seller.role,
           shopName: seller.shopName,
           bio: seller.bio,
-          streetNumber: seller.streetNumber,
+          streetAddress: seller.streetAddress,
           city: seller.city,
         });
         console.log("Seller user created:", seller.email);

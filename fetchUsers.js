@@ -36,7 +36,7 @@ async function fetchAllUsers() {
       console.log(`  Shop Name: ${user.shopName || 'N/A'}`);
       console.log(`  Bio: ${user.bio || 'N/A'}`);
       console.log(`  Profile Pic: ${user.profilePic || 'N/A'}`);
-      console.log(`  Address: ${user.streetNumber || 'N/A'}, ${user.city || 'N/A'}`);
+      console.log(`  Address: ${user.streetAddress || 'N/A'}, ${user.city || 'N/A'}`);
       console.log(`  Best Seller: ${user.bestSeller}`);
       console.log(`  Created: ${user.createdAt}`);
       console.log(`  Updated: ${user.updatedAt}`);

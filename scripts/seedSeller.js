@@ -15,7 +15,7 @@ const SELLER = {
   role: "seller",
   shopName: "Test Tailor Shop",
   bio: "Professional tailor with 10+ years of experience",
-  streetNumber: "123",
+  streetAddress: "123",
   city: "Test City",
 };
 
@@ -34,7 +34,7 @@ async function seedSeller() {
     existing.role = SELLER.role;
     existing.shopName = SELLER.shopName;
     existing.bio = SELLER.bio;
-    existing.streetNumber = SELLER.streetNumber;
+    existing.streetAddress = SELLER.streetAddress;
     existing.city = SELLER.city;
     await existing.save();
     console.log("Seller user updated:", SELLER.email);
@@ -47,7 +47,7 @@ async function seedSeller() {
       role: SELLER.role,
       shopName: SELLER.shopName,
       bio: SELLER.bio,
-      streetNumber: SELLER.streetNumber,
+      streetAddress: SELLER.streetAddress,
       city: SELLER.city,
     });
     console.log("Seller user created:", SELLER.email);

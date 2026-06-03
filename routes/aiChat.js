@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const { getOpenAIResponse, getOpenAIResponseWithVision, generateFashionImage, isOpenAIConfigured } = require('../services/openaiService');
+const { getMarketplaceInsights } = require('../services/marketplaceContextService');
 const multer = require('multer');
 const path = require('path');
 
@@ -55,7 +56,9 @@ router.post('/message', authMiddleware, upload.single('image'), async (req, res)
       id: req.user._id,
       email: req.user.email,
       role: req.user.role,
-      name: req.user.firstName || req.user.email
+      name: req.user.firstName || req.user.email,
+      city: req.user.city || '',
+      streetAddress: req.user.streetAddress || req.user.streetNumber || '',
     };
     
     // Prepare content for OpenAI
@@ -84,8 +87,17 @@ router.post('/message', authMiddleware, upload.single('image'), async (req, res)
       });
     }
     
-    // Get AI response from OpenAI with vision capabilities
-    const aiResponse = await getOpenAIResponseWithVision(content, userContext);
+    const textMessage = message ? String(message).trim() : '';
+    const marketplace = textMessage
+      ? await getMarketplaceInsights(textMessage, userContext)
+      : { useDirectAnswer: false, directAnswer: null, systemContext: '' };
+
+    let aiResponse;
+    if (marketplace.directAnswer && marketplace.useDirectAnswer && !imageFile) {
+      aiResponse = marketplace.directAnswer;
+    } else {
+      aiResponse = await getOpenAIResponseWithVision(content, userContext, marketplace.systemContext);
+    }
     
     // Log the interaction for analytics
     console.log(`AI Chat - User: ${userContext.name}, Message: "${message || '[Image only]'}", Image: ${!!imageFile}`);
